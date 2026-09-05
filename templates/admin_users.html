@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ t.menu_admin }} - Service Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Sarabun', sans-serif !important; }
+    body { padding-bottom: 85px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 md:p-6 min-h-screen">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Top Navbar -->
+    <nav class="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-xl shadow-sm">⚙️</div>
+        <div>
+          <h1 class="font-bold text-slate-900 text-base leading-tight">{{ t.menu_admin }}</h1>
+          <span class="text-xs text-slate-500">จัดการข้อมูลช่าง บุคลากร และกำหนดสิทธิ์การเข้าใช้งาน</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+          <a href="/set-lang/th" class="px-2 py-0.5 rounded {% if lang == 'th' %}bg-white text-slate-900 shadow-sm{% else %}text-slate-500{% endif %}">TH</a>
+          <a href="/set-lang/en" class="px-2 py-0.5 rounded {% if lang == 'en' %}bg-white text-slate-900 shadow-sm{% else %}text-slate-500{% endif %}">EN</a>
+        </div>
+        <a href="/" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">📋 {{ t.menu_home }}</a>
+        <a href="/invoice" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">📄 {{ t.menu_quotation }}</a>
+        <a href="/technician" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">🛠️ {{ t.menu_tech }}</a>
+        <a href="/admin/users" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-900 border border-slate-300">⚙️ {{ t.menu_admin }}</a>
+        {% if current_user %}
+          <a href="/logout" class="text-xs bg-rose-50 text-rose-600 font-semibold px-2.5 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-100 ml-1">
+            {{ t.logout }}
+          </a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <!-- ฟอร์มเพิ่มบุคลากรใหม่ -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+          + เพิ่มรายชื่อช่าง / หัวหน้างานใหม่
+        </h2>
+        <span class="text-xs text-slate-400">กำหนดระดับสิทธิ์และรหัสผ่านเข้าใช้งาน</span>
+      </div>
+
+      <form action="/user/add" method="POST" class="space-y-4 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">ชื่อ - นามสกุล <span class="text-rose-500">*</span></label>
+            <input type="text" name="full_name" required placeholder="เช่น นายช่างสมชาย ใจดี" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">ตำแหน่ง / ระดับสิทธิ์ <span class="text-rose-500">*</span></label>
+            <select name="role" required class="w-full px-3 py-2 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+              <option value="technician">ช่างผู้ปฏิบัติงาน (Technician)</option>
+              <option value="supervisor">หัวหน้างาน (Supervisor)</option>
+              <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">เบอร์โทรศัพท์ (ใช้เป็นไอดีล็อกอิน) <span class="text-rose-500">*</span></label>
+            <input type="text" name="phone" required placeholder="08x-xxx-xxxx" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">รหัสผ่านเข้าใช้งาน (Password)</label>
+            <input type="password" name="password" placeholder="เว้นว่างเพื่อใช้รหัสเริ่มต้นตามสิทธิ์" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+            <span class="text-[10px] text-slate-400 mt-0.5 block">เริ่มต้น: ช่าง=1234, หัวหน้า=super555, แอดมิน=admin888</span>
+          </div>
+          <div class="md:col-span-2 flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm text-xs transition">
+              บันทึกรายชื่อเข้าสู่ระบบ
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ตารางรายชื่อบุคลากร -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+      <div class="flex justify-between items-center border-b pb-3">
+        <div>
+          <h3 class="font-bold text-slate-800 text-sm">รายชื่อบุคลากรในระบบ</h3>
+          <p class="text-xs text-slate-400">ช่างและหัวหน้างานที่สามารถเลือกรับงานได้ ({{ users|length }} ท่าน)</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-100 text-slate-700 font-semibold border-y">
+            <tr>
+              <th class="p-3 w-12 text-center">#</th>
+              <th class="p-3">ชื่อ - นามสกุล</th>
+              <th class="p-3">ตำแหน่ง / สิทธิ์</th>
+              <th class="p-3">เบอร์โทรศัพท์ (ID)</th>
+              <th class="p-3">รหัสผ่าน</th>
+              <th class="p-3">วันที่เพิ่มเข้าสู่ระบบ</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for u in users %}
+            <tr class="hover:bg-slate-50 transition">
+              <td class="p-3 text-center text-slate-400">{{ loop.index }}</td>
+              <td class="p-3 font-semibold text-slate-900">{{ u[1] }}</td>
+              <td class="p-3">
+                {% if u[2] == 'admin' %}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">แอดมิน (Admin)</span>
+                {% elif u[2] == 'supervisor' %}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">หัวหน้างาน (Supervisor)</span>
+                {% else %}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">ช่าง (Technician)</span>
+                {% endif %}
+              </td>
+              <td class="p-3 font-mono text-slate-700">{{ u[3] or '-' }}</td>
+              <td class="p-3 font-mono text-slate-500">••••</td>
+              <td class="p-3 text-slate-400">{{ u[5][:10] if u[5] else '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="p-6 text-center text-slate-400">ยังไม่มีรายชื่อบุคลากรในระบบ</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-around items-center z-40 shadow-lg">
+    <a href="/" class="flex flex-col items-center text-slate-400"><span class="text-lg">📋</span><span class="text-[10px]">{{ t.menu_home }}</span></a>
+    <a href="/invoice" class="flex flex-col items-center text-slate-400"><span class="text-lg">📄</span><span class="text-[10px]">{{ t.menu_quotation }}</span></a>
+    <a href="/technician" class="flex flex-col items-center text-slate-400"><span class="text-lg">🛠️</span><span class="text-[10px]">{{ t.menu_tech }}</span></a>
+    <a href="/admin/users" class="flex flex-col items-center text-slate-800 font-bold"><span class="text-lg">⚙️</span><span class="text-[10px]">{{ t.menu_admin }}</span></a>
+  </div>
+</body>
+</html>

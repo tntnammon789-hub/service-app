@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใบเสนอราคา & ใบแจ้งหนี้ - Service Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; padding-bottom: 75px; }
+    @media print {
+      nav, .no-print, .mobile-bottom-nav { display: none !important; }
+      body { background: white; padding: 0; }
+      .print-shadow-none { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 md:p-6 min-h-screen">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Top Navbar ครบ 4 เมนู + ปุ่มสลับภาษา -->
+    <nav class="bg-white border border-slate-200 rounded-xl px-5 py-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3 no-print">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">Q</div>
+        <div>
+          <span class="font-bold text-slate-900 text-base md:text-lg leading-tight block">Quotation & Invoice</span>
+          <span class="text-xs text-slate-500 hidden md:block">ระบบสร้างและแก้ไขใบเสนอราคาแบบยืดหยุ่น (Customizable)</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+          <a href="/set-lang/th" class="px-2 py-0.5 rounded {% if lang == 'th' %}bg-white text-emerald-600 shadow-sm{% else %}text-slate-500{% endif %}">TH</a>
+          <a href="/set-lang/en" class="px-2 py-0.5 rounded {% if lang == 'en' %}bg-white text-emerald-600 shadow-sm{% else %}text-slate-500{% endif %}">EN</a>
+        </div>
+        <a href="/" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">📋 {{ t.menu_home }}</a>
+        <a href="/invoice" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">📄 {{ t.menu_quotation }}</a>
+        <a href="/technician" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">🛠️ {{ t.menu_tech }}</a>
+        <a href="/admin/users" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">⚙️ {{ t.menu_admin }}</a>
+        {% if current_user %}
+          <a href="/logout" class="text-xs text-rose-500 hover:underline ml-2">({{ current_user }}) ออกจากระบบ</a>
+        {% else %}
+          <a href="/login" class="text-xs text-indigo-600 font-semibold ml-2 hover:underline">เข้าสู่ระบบ</a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <!-- แผงประวัติใบเสนอราคา & ปุ่มสร้างใหม่ -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm no-print space-y-3">
+      <div class="flex justify-between items-center border-b pb-2">
+        <div>
+          <h2 class="text-sm font-bold text-slate-800">จัดการเอกสารใบเสนอราคาในระบบ</h2>
+          <span class="text-xs text-slate-400">เลือกรายการที่บันทึกไว้เพื่อโหลดขึ้นมาแก้ไข หรือกดปุ่มด้านขวาเพื่อออกใบใหม่</span>
+        </div>
+        <a href="/invoice" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+          <span>+ สร้างใบเสนอราคาใหม่ (New Quotation)</span>
+        </a>
+      </div>
+
+      <div class="max-h-36 overflow-y-auto divide-y divide-slate-100 text-xs">
+        {% for q in quotations %}
+        <div class="py-2 flex justify-between items-center hover:bg-slate-50 transition px-2 rounded {% if edit_data and edit_data.id == q[0] %}bg-emerald-50 border-l-4 border-emerald-500{% endif %}">
+          <div class="flex items-center gap-3">
+            <span class="font-mono font-bold text-blue-600">{{ q[1] }}</span>
+            <span class="font-medium text-slate-800">{{ q[2] or 'ลูกค้าทั่วไป (Custom)' }}</span>
+            <span class="text-slate-400">({{ q[3] }})</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-mono font-bold text-slate-700">฿{{ "%.2f"|format(q[4] or 0.0) }}</span>
+            <a href="/invoice?edit_id={{ q[0] }}" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded text-[11px] font-medium transition">
+              ✏️ แก้ไข
+            </a>
+            <form action="/invoice/delete/{{ q[0] }}" method="POST" onsubmit="return confirm('ยืนยันลบใบเสนอราคานี้หรือไม่?')" class="inline">
+              <button type="submit" class="text-rose-500 hover:text-rose-700 px-1 text-xs">ลบ</button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-slate-400">ยังไม่มีประวัติใบเสนอราคาที่บันทึกไว้ในฐานข้อมูล</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ฟอร์มเอกสารใบเสนอราคา (มีสลับโหมด Customize อิสระ) -->
+    <form action="/invoice/save" method="POST" id="invoiceForm">
+      {% if edit_data %}
+        <input type="hidden" name="quotation_id" value="{{ edit_data.id }}">
+      {% endif %}
+
+      <div class="bg-white p-6 md:p-8 rounded-xl border border-slate-200 shadow-sm print-shadow-none space-y-6">
+        
+        <!-- ส่วนหัวเอกสาร -->
+        <div class="flex flex-wrap justify-between items-start border-b border-slate-200 pb-5 gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">ใบเสนอราคา / ใบแจ้งหนี้</h1>
+            <p class="text-xs text-slate-500 mt-0.5">QUOTATION / PROFORMA INVOICE</p>
+            <div class="text-xs text-slate-600 mt-2 space-y-0.5">
+              <p class="font-semibold text-slate-800">บริษัท สยาม เลเบล โซลูชั่นส์ จำกัด</p>
+              <p>123/45 ถนนเพชรเกษม แขวงบางแค เขตบางแค กรุงเทพมหานคร 10160</p>
+              <p>เลขประจำตัวผู้เสียภาษี: 0105566012345 (สำนักงานใหญ่) | โทร: 02-123-4567</p>
+            </div>
+          </div>
+          <div class="text-right space-y-1.5">
+            <div class="bg-slate-100 p-2.5 rounded-lg border border-slate-200 inline-block text-left">
+              <label class="text-[10px] text-slate-500 block font-semibold">เลขที่เอกสาร (Document No.)</label>
+              <input type="text" name="doc_no" required value="{{ edit_data.doc_no if edit_data else default_doc_no }}" class="font-mono font-bold text-blue-600 bg-transparent text-sm outline-none border-b border-dashed border-slate-400 w-36">
+            </div>
+            <div class="text-xs text-slate-500 flex items-center justify-end gap-1">
+              <span>วันที่:</span>
+              <input type="date" name="doc_date" value="{{ edit_data.doc_date if edit_data else today_str }}" class="border-b border-slate-300 outline-none text-xs bg-transparent">
+            </div>
+          </div>
+        </div>
+
+        <!-- แผงสลับโหมดลูกค้า: เลือกลูกค้า หรือ โหมดพิมพ์เองอิสระ (Custom) -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 no-print border-b border-slate-200 pb-2">
+            <span class="text-xs font-bold text-slate-700">รูปแบบข้อมูลลูกค้า:</span>
+            <div class="flex gap-2">
+              <button type="button" id="btnModeMaster" onclick="switchCustomerMode('master')" class="px-3 py-1 text-xs font-semibold rounded bg-emerald-600 text-white shadow-sm">
+                เลือกจากฐานข้อมูล
+              </button>
+              <button type="button" id="btnModeCustom" onclick="switchCustomerMode('custom')" class="px-3 py-1 text-xs font-semibold rounded bg-slate-200 text-slate-700 hover:bg-slate-300">
+                ✏️ โหมด Custom (พิมพ์เองอิสระ)
+              </button>
+            </div>
+          </div>
+
+          <input type="hidden" name="customer_mode" id="customer_mode" value="{% if edit_data and not edit_data.customer_id %}custom{% else %}master{% endif %}">
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <!-- ฝั่งข้อมูลลูกค้า -->
+            <div class="space-y-2">
+              <!-- Dropdown เลือกรายชื่อ (โหมด Master) -->
+              <div id="masterCustomerDiv">
+                <label class="block text-xs font-semibold text-slate-500 mb-1 no-print">เลือกลูกค้าจากฐานข้อมูล (Customer Master)</label>
+                <select name="customer_id" id="customerSelect" class="w-full px-3 py-2 border rounded-lg text-xs bg-white outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="">-- เลือกลูกค้าเพื่อกรอกข้อมูลอัตโนมัติ --</option>
+                  {% for c in customers %}
+                    <option value="{{ c[0] }}" 
+                            data-name="{{ c[1] }}" 
+                            data-tax="{{ c[2] or '-' }}" 
+                            data-addr="{{ c[3] or '-' }}" 
+                            data-credit="{{ c[6] or '30 วัน' }}"
+                            {% if edit_data and edit_data.customer_id == c[0] %}selected{% endif %}>
+                      {{ c[1] }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- ช่องพิมพ์ข้อมูลลูกค้า (รองรับทั้งแสดงผลและโหมด Custom พิมพ์เอง) -->
+              <div class="space-y-1.5 pt-1">
+                <div>
+                  <label class="text-[10px] text-slate-400 block">ชื่อบริษัท / ลูกค้า</label>
+                  <input type="text" name="custom_company_name" id="custNameInput" placeholder="พิมพ์ชื่อบริษัท / ลูกค้า..." class="w-full font-bold text-slate-900 bg-white border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-emerald-500" value="{{ edit_data.custom_company_name if edit_data else '' }}">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-400 block">เลขประจำตัวผู้เสียภาษี (13 หลัก)</label>
+                  <input type="text" name="custom_tax_id" id="custTaxInput" placeholder="พิมพ์เลขผู้เสียภาษี..." class="w-full text-xs text-slate-700 bg-white border border-slate-300 rounded px-2 py-1 outline-none" value="{{ edit_data.custom_tax_id if edit_data else '' }}">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-400 block">ที่อยู่ออกใบกำกับภาษี</label>
+                  <textarea name="custom_address" id="custAddrInput" rows="2" placeholder="พิมพ์ที่อยู่ลูกค้า..." class="w-full text-xs text-slate-700 bg-white border border-slate-300 rounded px-2 py-1 outline-none">{{ edit_data.custom_address if edit_data else '' }}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- ฝั่งเงื่อนไขเอกสาร -->
+            <div class="text-xs space-y-2.5 bg-white p-3.5 rounded-lg border border-slate-200 flex flex-col justify-center">
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-slate-600">เงื่อนไขการชำระเงิน:</span>
+                <input type="text" name="credit_term" value="{{ edit_data.credit_term if edit_data else 'โอนเงินสด / เครดิต 30 วัน' }}" class="border-b border-slate-300 text-right outline-none text-xs w-44 font-medium">
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-slate-600">ยืนยันราคาภายใน:</span>
+                <input type="text" name="validity_days" value="{{ edit_data.validity_days if edit_data else '30 วัน' }}" class="border-b border-slate-300 text-right outline-none text-xs w-44 font-medium">
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-slate-600">กำหนดส่งมอบงาน:</span>
+                <input type="text" name="delivery_term" value="{{ edit_data.delivery_term if edit_data else '3-7 วันทำการ' }}" class="border-b border-slate-300 text-right outline-none text-xs w-44 font-medium">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ตารางรายการสินค้า (พิมพ์รายการเอง เพิ่ม/ลดแถวได้อิสระ) -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm" id="itemsTable">
+            <thead class="bg-slate-100 text-slate-800 font-semibold border-y border-slate-200">
+              <tr>
+                <th class="p-2.5 w-10 text-center">#</th>
+                <th class="p-2.5">รายการสินค้า / ค่าบริการ (Custom Editable)</th>
+                <th class="p-2.5 w-24 text-center">จำนวน</th>
+                <th class="p-2.5 w-32 text-right">ราคาต่อหน่วย (฿)</th>
+                <th class="p-2.5 w-32 text-right">รวมเงิน (฿)</th>
+                <th class="p-2.5 w-10 text-center no-print"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="itemsBody">
+              {% if edit_data and edit_data.items %}
+                {% for itm in edit_data.items %}
+                <tr>
+                  <td class="p-2 text-center text-xs row-index">{{ loop.index }}</td>
+                  <td class="p-2">
+                    <input type="text" name="item_name[]" required class="w-full bg-transparent border-b border-slate-200 focus:border-emerald-500 outline-none text-xs font-medium" value="{{ itm.name }}">
+                  </td>
+                  <td class="p-2 text-center">
+                    <input type="number" name="item_qty[]" class="w-16 text-center border rounded item-qty text-xs py-0.5" value="{{ itm.qty }}" min="1" step="any" oninput="calculateTotal()">
+                  </td>
+                  <td class="p-2 text-right font-mono">
+                    <input type="number" name="item_price[]" class="w-28 text-right border rounded item-price text-xs py-0.5" value="{{ itm.price }}" step="0.01" oninput="calculateTotal()">
+                  </td>
+                  <td class="p-2 text-right font-mono font-semibold item-subtotal text-xs">{{ "%.2f"|format(itm.total) }}</td>
+                  <td class="p-2 text-center no-print">
+                    <button type="button" onclick="removeRow(this)" class="text-rose-500 hover:text-rose-700 text-xs">✕</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td class="p-2 text-center text-xs row-index">1</td>
+                  <td class="p-2">
+                    <input type="text" name="item_name[]" required class="w-full bg-transparent border-b border-slate-200 focus:border-emerald-500 outline-none text-xs font-medium" value="เครื่องพิมพ์บาร์โค้ดอุตสาหกรรม TSC MH 341">
+                  </td>
+                  <td class="p-2 text-center">
+                    <input type="number" name="item_qty[]" class="w-16 text-center border rounded item-qty text-xs py-0.5" value="1" min="1" step="any" oninput="calculateTotal()">
+                  </td>
+                  <td class="p-2 text-right font-mono">
+                    <input type="number" name="item_price[]" class="w-28 text-right border rounded item-price text-xs py-0.5" value="38500.00" step="0.01" oninput="calculateTotal()">
+                  </td>
+                  <td class="p-2 text-right font-mono font-semibold item-subtotal text-xs">38,500.00</td>
+                  <td class="p-2 text-center no-print">
+                    <button type="button" onclick="removeRow(this)" class="text-rose-500 hover:text-rose-700 text-xs">✕</button>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="no-print">
+          <button type="button" onclick="addRow()" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-slate-700 font-semibold transition">
+            + เพิ่มแถวรายการสินค้า
+          </button>
+        </div>
+
+        <!-- ส่วนคำนวณเงิน Subtotal / VAT 7% / Grand Total -->
+        <div class="flex justify-end pt-3 border-t border-slate-200">
+          <div class="w-72 space-y-1.5 text-xs text-slate-600">
+            <div class="flex justify-between">
+              <span>รวมเป็นเงิน (Subtotal):</span>
+              <span class="font-mono font-medium" id="subtotalVal">฿0.00</span>
+            </div>
+            <div class="flex justify-between">
+              <span>ภาษีมูลค่าเพิ่ม (VAT 7%):</span>
+              <span class="font-mono font-medium" id="vatVal">฿0.00</span>
+            </div>
+            <div class="flex justify-between border-t border-slate-300 pt-2 text-sm font-bold text-slate-900">
+              <span>จำนวนเงินรวมทั้งสิ้น:</span>
+              <span class="font-mono text-emerald-600 text-base" id="grandTotalVal">฿0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ช่องลงลายมือชื่อสำหรับพิมพ์ PDF -->
+        <div class="grid grid-cols-2 gap-12 pt-10 text-center text-xs text-slate-500">
+          <div>
+            <div class="border-b border-slate-300 h-14 mb-2"></div>
+            <p>ผู้สั่งซื้อ / ผู้มีอำนาจลงนามอนุมัติ</p>
+            <p>วันที่: ______/______/______</p>
+          </div>
+          <div>
+            <div class="border-b border-slate-300 h-14 mb-2"></div>
+            <p>ผู้ออกใบเสนอราคา / ผู้มีอำนาจลงนาม</p>
+            <p>วันที่: ______/______/______</p>
+          </div>
+        </div>
+
+        <!-- แถบปุ่มบันทึกและพิมพ์ -->
+        <div class="pt-5 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3 no-print">
+          <span class="text-xs text-slate-400">* กดบันทึกข้อมูลเพื่ออัปเดตลง Turso ได้ตลอดเวลา</span>
+          <div class="flex gap-2">
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+              <span>💾 บันทึกใบเสนอราคา</span>
+            </button>
+            <button type="button" onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+              <span>🖨️ พิมพ์เอกสาร / บันทึก PDF</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </form>
+
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar (แถบเมนูด้านล่าง 4 เมนู) -->
+  <div class="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 flex justify-around items-center z-50 shadow-lg">
+    <a href="/" class="flex flex-col items-center text-slate-500">
+      <span class="text-xl">📋</span>
+      <span class="text-[10px]">{{ t.menu_home }}</span>
+    </a>
+    <a href="/invoice" class="flex flex-col items-center text-emerald-600 font-bold">
+      <span class="text-xl">📄</span>
+      <span class="text-[10px]">{{ t.menu_quotation }}</span>
+    </a>
+    <a href="/technician" class="flex flex-col items-center text-slate-500">
+      <span class="text-xl">🛠️</span>
+      <span class="text-[10px]">{{ t.menu_tech }}</span>
+    </a>
+    <a href="/admin/users" class="flex flex-col items-center text-slate-500">
+      <span class="text-xl">⚙️</span>
+      <span class="text-[10px]">{{ t.menu_admin }}</span>
+    </a>
+  </div>
+
+  <script>
+    function switchCustomerMode(mode) {
+      document.getElementById('customer_mode').value = mode;
+      const btnMaster = document.getElementById('btnModeMaster');
+      const btnCustom = document.getElementById('btnModeCustom');
+      const masterDiv = document.getElementById('masterCustomerDiv');
+
+      if (mode === 'master') {
+        btnMaster.className = "px-3 py-1 text-xs font-semibold rounded bg-emerald-600 text-white shadow-sm";
+        btnCustom.className = "px-3 py-1 text-xs font-semibold rounded bg-slate-200 text-slate-700 hover:bg-slate-300";
+        masterDiv.classList.remove('hidden');
+      } else {
+        btnCustom.className = "px-3 py-1 text-xs font-semibold rounded bg-emerald-600 text-white shadow-sm";
+        btnMaster.className = "px-3 py-1 text-xs font-semibold rounded bg-slate-200 text-slate-700 hover:bg-slate-300";
+        masterDiv.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('customerSelect').addEventListener('change', function() {
+      const opt = this.options[this.selectedIndex];
+      if (opt.value) {
+        document.getElementById('custNameInput').value = opt.getAttribute('data-name') || '';
+        document.getElementById('custTaxInput').value = opt.getAttribute('data-tax') || '';
+        document.getElementById('custAddrInput').value = opt.getAttribute('data-addr') || '';
+      }
+    });
+
+    function calculateTotal() {
+      let subtotal = 0;
+      document.querySelectorAll('#itemsBody tr').forEach((row, idx) => {
+        const iEl = row.querySelector('.row-index');
+        if (iEl) iEl.innerText = idx + 1;
+
+        const q = parseFloat(row.querySelector('.item-qty').value) || 0;
+        const p = parseFloat(row.querySelector('.item-price').value) || 0;
+        const tot = q * p;
+        row.querySelector('.item-subtotal').innerText = tot.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        subtotal += tot;
+      });
+
+      const vat = subtotal * 0.07;
+      const grand = subtotal + vat;
+
+      document.getElementById('subtotalVal').innerText = '฿' + subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      document.getElementById('vatVal').innerText = '฿' + vat.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      document.getElementById('grandTotalVal').innerText = '฿' + grand.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function addRow() {
+      const tbody = document.getElementById('itemsBody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2 text-center text-xs row-index"></td>
+        <td class="p-2">
+          <input type="text" name="item_name[]" required class="w-full bg-transparent border-b border-slate-200 focus:border-emerald-500 outline-none text-xs font-medium" placeholder="พิมพ์ชื่อสินค้า / บริการ...">
+        </td>
+        <td class="p-2 text-center">
+          <input type="number" name="item_qty[]" class="w-16 text-center border rounded item-qty text-xs py-0.5" value="1" min="1" step="any" oninput="calculateTotal()">
+        </td>
+        <td class="p-2 text-right font-mono">
+          <input type="number" name="item_price[]" class="w-28 text-right border rounded item-price text-xs py-0.5" value="0.00" step="0.01" oninput="calculateTotal()">
+        </td>
+        <td class="p-2 text-right font-mono font-semibold item-subtotal text-xs">0.00</td>
+        <td class="p-2 text-center no-print">
+          <button type="button" onclick="removeRow(this)" class="text-rose-500 hover:text-rose-700 text-xs">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+      calculateTotal();
+    }
+
+    function removeRow(btn) {
+      const tbody = document.getElementById('itemsBody');
+      if (tbody.children.length > 1) {
+        btn.closest('tr').remove();
+        calculateTotal();
+      }
+    }
+window.addEventListener('DOMContentLoaded', () => {
+      calculateTotal();
+      const isCustomMode = "{{ 'custom' if edit_data and not edit_data.customer_id else 'master' }}";
+      if (isCustomMode === 'custom') {
+        switchCustomerMode('custom');
+      }
+    });
+  </script>
+</body>
+</html>

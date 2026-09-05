@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจัดการข้อมูลลูกค้า</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen py-10 px-4">
+  <div class="max-w-4xl mx-auto space-y-8">
+    
+    <!-- กล่องแบบฟอร์ม -->
+    <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+      <div class="border-b border-slate-200 pb-4 mb-6">
+        <h1 class="text-2xl font-bold text-slate-800">ทะเบียนประวัติลูกค้า / ข้อมูลบริษัท</h1>
+        <p class="text-sm text-slate-500">บันทึกข้อมูลตั้งต้นของลูกค้าสำหรับการซื้อขายและเปิดบิล</p>
+      </div>
+
+      <form action="/customer/save" method="POST" class="space-y-6">
+        
+        <!-- หมวดข้อมูลนิติบุคคล -->
+        <div>
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-indigo-600 mb-3">1. ข้อมูลนิติบุคคล / ภาษี</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อบริษัท / นิติบุคคล / บุคคลธรรมดา <span class="text-rose-500">*</span></label>
+              <input type="text" name="company_name" required placeholder="เช่น บริษัท สยาม เลเบล โซลูชั่นส์ จำกัด" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">เลขประจำตัวผู้เสียภาษี (13 หลัก)</label>
+              <input type="text" name="tax_id" maxlength="13" placeholder="01055xxxxxxxx" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">สาขา</label>
+                <select name="branch_type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="headquarter">สำนักงานใหญ่</option>
+                  <option value="branch">สาขา</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">รหัสสาขา</label>
+                <input type="text" name="branch_code" placeholder="00000" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- หมวดผู้ติดต่อ -->
+        <div>
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-indigo-600 mb-3">2. บุคคลและช่องทางติดต่อ</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อผู้ติดต่อ</label>
+              <input type="text" name="contact_person" placeholder="เช่น คุณสมชาย ช่างเทคนิค" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">แผนก / ฝ่าย</label>
+              <input type="text" name="contact_department" placeholder="เช่น ฝ่ายซ่อมบำรุง / จัดซื้อ" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">เบอร์โทรศัพท์</label>
+              <input type="tel" name="phone" placeholder="08x-xxx-xxxx หรือ 02-xxx-xxxx" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">อีเมล</label>
+              <input type="email" name="email" placeholder="contact@company.com" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- หมวดที่อยู่และเงื่อนไข -->
+        <div>
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-indigo-600 mb-3">3. สถานที่และการค้า</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">ที่อยู่จดทะเบียน (สำหรับออกใบกำกับภาษี)</label>
+              <textarea name="tax_address" rows="2" placeholder="ที่อยู่ตามแบบ ภ.พ.20 รวมรหัสไปรษณีย์" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">ที่อยู่จัดส่งสินค้า / เข้าหน้างาน</label>
+              <textarea name="shipping_address" rows="2" placeholder="กรณีหน้างานหรือโรงงานอยู่คนละจุดกับที่อยู่เปิดบิล" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">เครดิตเทอม (Credit Term)</label>
+                <input type="text" name="credit_terms" placeholder="เช่น เงินสด, โอนก่อนส่ง, เครดิต 30 วัน" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">หมายเหตุเฉพาะ</label>
+                <input type="text" name="notes" placeholder="เช่น วันรับเช็ค/วางบิล ทุกวันศุกร์สิ้นเดือน" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 flex justify-end">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm transition">
+            บันทึกข้อมูลลูกค้า
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ตารางรายชื่อลูกค้าที่บันทึกแล้ว -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <h2 class="text-lg font-bold text-slate-800 mb-4">รายชื่อลูกค้าในระบบ</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 font-semibold">
+            <tr>
+              <th class="p-3">#</th>
+              <th class="p-3">ชื่อบริษัท</th>
+              <th class="p-3">เลขผู้เสียภาษี</th>
+              <th class="p-3">ผู้ติดต่อ</th>
+              <th class="p-3">เบอร์โทร</th>
+              <th class="p-3">เครดิต</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for c in customers %}
+            <tr class="hover:bg-slate-50">
+              <td class="p-3">{{ c[0] }}</td>
+              <td class="p-3 font-medium text-slate-900">{{ c[1] }}</td>
+              <td class="p-3">{{ c[2] or '-' }}</td>
+              <td class="p-3">{{ c[3] or '-' }}</td>
+              <td class="p-3">{{ c[4] or '-' }}</td>
+              <td class="p-3">{{ c[5] or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="p-4 text-center text-slate-400">ยังไม่มีข้อมูลลูกค้าในระบบ</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

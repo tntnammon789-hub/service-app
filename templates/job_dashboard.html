@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ t.title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Sarabun', sans-serif !important; }
+    body { padding-bottom: 85px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 md:p-6 min-h-screen">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Top Navbar (มาตรฐานเดียวกันทุกหน้า) -->
+    <nav class="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-sm">📋</div>
+        <div>
+          <h1 class="font-bold text-slate-900 text-base leading-tight">{{ t.title }}</h1>
+          <span class="text-xs text-slate-500">ผู้ใช้งาน: <strong class="text-blue-600">{{ current_user }}</strong> ({{ current_role }})</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+          <a href="/set-lang/th" class="px-2 py-0.5 rounded {% if lang == 'th' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-500{% endif %}">TH</a>
+          <a href="/set-lang/en" class="px-2 py-0.5 rounded {% if lang == 'en' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-500{% endif %}">EN</a>
+        </div>
+        <a href="/" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">📋 {{ t.menu_home }}</a>
+        <a href="/invoice" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">📄 {{ t.menu_quotation }}</a>
+        <a href="/technician" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">🛠️ {{ t.menu_tech }}</a>
+        <a href="/admin/users" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">⚙️ {{ t.menu_admin }}</a>
+        {% if current_user %}
+          <a href="/logout" class="text-xs bg-rose-50 text-rose-600 font-semibold px-2.5 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-100 ml-1">
+            {{ t.logout }}
+          </a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <!-- แจ้งเตือนสินค้าหมดอายุ / งานด่วนรออนุมัติ -->
+    {% if pending_approval_jobs %}
+    <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm space-y-3">
+      <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+        <h3 class="font-bold text-amber-900 text-sm flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-600 animate-pulse"></span>
+          🚨 งานด่วนหน้างานรอการตรวจสอบ & มอบหมายช่าง ({{ pending_approval_jobs|length }} รายการ)
+        </h3>
+        <span class="text-xs font-semibold text-amber-700">คำสั่งการจากหัวหน้างาน</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% for pj in pending_approval_jobs %}
+        <div class="bg-white p-4 rounded-xl border border-amber-200 space-y-2 text-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="font-mono font-bold text-blue-600">{{ pj[1] }}</span>
+              <h4 class="font-bold text-slate-900 text-sm">{{ pj[2] or 'ลูกค้าใหม่/หน้างาน' }}</h4>
+            </div>
+            <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-[10px]">รอคำสั่งการ</span>
+          </div>
+          <p class="text-slate-600">🔢 <strong>S/N:</strong> <span class="font-mono font-bold text-indigo-600">{{ pj[3] or '-' }}</span> | ช่างแจ้ง: {{ pj[5] or '-' }}</p>
+          <div class="bg-slate-50 p-2 rounded border text-slate-700">
+            <strong>อาการ:</strong> {{ pj[4] or '-' }}
+          </div>
+          <form action="/job/{{ pj[0] }}/approve-assign" method="POST" class="flex items-center gap-2 pt-1">
+            <select name="technician_id" required class="px-2 py-1.5 border rounded-lg bg-white text-xs flex-1 font-semibold">
+              <option value="">-- เลือกช่างผู้รับผิดชอบ --</option>
+              {% for t in technicians %}
+                <option value="{{ t[0] }}" {% if pj[7]|string == t[0]|string %}selected{% endif %}>
+                  {{ t[1] }} {% if pj[7]|string == t[0]|string %}(ผู้แจ้งงานนี้){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm">
+              ✓ สั่งการ
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ส่วนที่ 1: จัดการข้อมูลลูกค้า (Customer Master) & สต็อกสินค้า -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+      <!-- กล่องฟอร์มเพิ่มข้อมูลลูกค้า (ครบถ้วนตาม Schema ตาราง Turso) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="border-b pb-3 flex justify-between items-center">
+          <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+            + เพิ่มข้อมูลลูกค้าใหม่ (Customer Master)
+          </h2>
+          <span class="text-xs text-slate-400">บันทึกลงฐานข้อมูล customers</span>
+        </div>
+
+        <form action="/customer/add" method="POST" class="space-y-3 text-xs">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">ชื่อบริษัท / ลูกค้า <span class="text-rose-500">*</span></label>
+            <input type="text" name="company_name" required placeholder="เช่น บริษัท สยามเทค จำกัด" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">เลขประจำตัวผู้เสียภาษี</label>
+              <input type="text" name="tax_id" maxlength="13" placeholder="เลข 13 หลัก" class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">ประเภทสาขา</label>
+              <select name="branch_type" class="w-full px-3 py-2 border rounded-xl bg-white outline-none">
+                <option value="headquarter">สำนักงานใหญ่</option>
+                <option value="branch">สาขา</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">รหัสสาขา</label>
+              <input type="text" name="branch_code" placeholder="เช่น 00000" class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">ผู้ติดต่อประสานงาน</label>
+              <input type="text" name="contact_person" placeholder="ชื่อผู้ติดต่อหน้างาน" class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">แผนก / ตำแหน่ง</label>
+              <input type="text" name="contact_department" placeholder="เช่น ฝ่ายจัดซื้อ / ซ่อมบำรุง" class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">เบอร์โทรศัพท์</label>
+              <input type="text" name="phone" placeholder="02-xxx-xxxx" class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">อีเมล</label>
+              <input type="email" name="email" placeholder="contact@company.com" class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">เงื่อนไขเครดิตเทอม</label>
+              <input type="text" name="credit_terms" placeholder="เช่น 30 วัน" class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">ที่อยู่ออกใบกำกับภาษี (Tax Address)</label>
+            <textarea name="tax_address" rows="2" placeholder="ที่อยู่จดทะเบียนภาษี..." class="w-full px-3 py-2 border rounded-xl outline-none"></textarea>
+          </div>
+
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">สถานที่หน้างาน / จุดส่งมอบติดตั้ง (Shipping Address)</label>
+            <textarea name="shipping_address" rows="2" placeholder="ที่อยู่โรงงาน หรือสถานที่หน้างานติดตั้ง..." class="w-full px-3 py-2 border rounded-xl outline-none"></textarea>
+          </div>
+
+          <div class="flex justify-end pt-1">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm text-xs transition">
+              บันทึกข้อมูลลูกค้าใหม่
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- สต็อกสินค้า & เพิ่มสินค้าใหม่ -->
+      <div class="space-y-4">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 text-xs">
+          <div class="border-b pb-3 flex justify-between items-center">
+            <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+              + เพิ่มสินค้า / เครื่องจักร / อะไหล่
+            </h2>
+            <span class="text-xs text-slate-400">คุมสต็อก & วันหมดอายุ</span>
+          </div>
+
+          <form action="/product/add" method="POST" class="space-y-3">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700">ชื่อสินค้า / รุ่นเครื่องพิมพ์ <span class="text-rose-500">*</span></label>
+              <input type="text" name="product_name" required placeholder="เช่น เครื่องพิมพ์บาร์โค้ด TSC MH 341" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-semibold mb-1 text-slate-700">รหัสสินค้า</label>
+                <input type="text" name="product_code" placeholder="PRD-001" class="w-full px-3 py-2 border rounded-xl outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold mb-1 text-slate-700">โมเดล / Model</label>
+                <input type="text" name="model" placeholder="TSC MH341" class="w-full px-3 py-2 border rounded-xl outline-none">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-semibold mb-1 text-slate-700">จำนวนคงคลังเริ่มต้น</label>
+                <input type="number" name="stock_qty" required placeholder="0" class="w-full px-3 py-2 border rounded-xl outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold mb-1 text-slate-700">วันหมดอายุการรับประกัน</label>
+                <input type="date" name="expiry_date" class="w-full px-3 py-2 border rounded-xl outline-none">
+              </div>
+            </div>
+            <div class="flex justify-end pt-1">
+              <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm text-xs transition">
+                บันทึกสินค้าเข้าคลัง
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- รายการสต็อกสินค้าคงคลัง -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-xs space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <span class="font-bold text-slate-800">📦 สินค้าในคลัง ({{ products|length }} รายการ)</span>
+            <span class="text-[11px] text-slate-400">หักสต็อกอัตโนมัติเมื่อเปิดงาน</span>
+          </div>
+          <div class="max-h-48 overflow-y-auto divide-y divide-slate-100">
+            {% for p in products %}
+            <div class="py-2 flex justify-between items-center">
+              <div>
+                <span class="font-semibold text-slate-900">{{ p.product_name }}</span>
+                <span class="text-slate-400 block text-[11px]">{{ p.model or '-' }} | Code: {{ p.product_code or '-' }}</span>
+              </div>
+              <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg font-mono font-bold">
+                เหลือ: {{ p.stock_qty }}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ตารางรายชื่อลูกค้าทั้งหมดในระบบ (Customer Directory) -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-xs">
+      <div class="flex justify-between items-center border-b pb-3">
+        <div>
+          <h3 class="font-bold text-slate-800 text-sm">ทะเบียนรายชื่อลูกค้าในระบบ (Customer Directory)</h3>
+          <p class="text-xs text-slate-400">รายชื่อลูกค้าทั้งหมดที่พร้อมใช้งานในใบงานและใบเสนอราคา ({{ customers|length }} บริษัท)</p>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-slate-100 text-slate-700 font-semibold border-y">
+            <tr>
+              <th class="p-3 w-12 text-center">#</th>
+              <th class="p-3">ชื่อบริษัท / ลูกค้า</th>
+              <th class="p-3">เลขผู้เสียภาษี</th>
+              <th class="p-3">ผู้ติดต่อหน้างาน</th>
+              <th class="p-3">เบอร์โทรศัพท์</th>
+              <th class="p-3">สถานที่หน้างาน</th>
+              <th class="p-3">เครดิต</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for c in customers %}
+            <tr class="hover:bg-slate-50 transition">
+              <td class="p-3 text-center text-slate-400 font-mono">{{ loop.index }}</td>
+              <td class="p-3 font-semibold text-slate-900">{{ c[1] }}</td>
+              <td class="p-3 font-mono text-slate-600">{{ c[2] or '-' }}</td>
+              <td class="p-3">{{ c[3] or '-' }}</td>
+              <td class="p-3 font-mono text-slate-600">{{ c[4] or '-' }}</td>
+              <td class="p-3 max-w-xs truncate text-slate-500">{{ c[5] or '-' }}</td>
+              <td class="p-3 font-medium text-indigo-600">{{ c[6] or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="p-6 text-center text-slate-400">ยังไม่มีข้อมูลลูกค้าในระบบ</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ส่วนที่ 2: เปิดใบงานใหม่ (Job Order) + เช็ก Serial เครื่องในกล่องลูกค้า -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+          เปิดใบงานใหม่ (Job Order)
+        </h2>
+        <span class="font-mono font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-xl text-xs border border-blue-200">{{ auto_job_no }}</span>
+      </div>
+
+      <form action="/job/create" method="POST" class="space-y-4 text-xs">
+        <input type="hidden" name="job_no" value="{{ auto_job_no }}">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">เลือกลูกค้า <span class="text-rose-500">*</span></label>
+            <select name="customer_id" id="customerSelect" required class="w-full px-3 py-2 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+              <option value="">-- เลือกลูกค้า --</option>
+              {% for c in customers %}
+                <option value="{{ c[0] }}">{{ c[1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="md:col-span-2 bg-amber-50 border border-amber-200 p-2.5 rounded-xl hidden" id="customerMachinesBox">
+            <span class="font-bold text-amber-900 block mb-1">📦 เครื่องที่ลูกค้ารายนี้เคยซื้อไป (S/N):</span>
+            <div id="machinesList" class="flex flex-wrap gap-1.5"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">เลือกสินค้า / เครื่อง / อะไหล่</label>
+            <select name="product_id" class="w-full px-3 py-2 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">-- เลือกรายการ --</option>
+              {% for p in products %}
+                <option value="{{ p.id }}">{{ p.product_name }} ({{ p.model or '-' }}) [คงเหลือ: {{ p.stock_qty }}]</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">Serial No. เฉพาะเครื่องนี้</label>
+            <input type="text" name="serial_no" placeholder="เช่น SN-2026-001" class="w-full px-3 py-2 border rounded-xl font-mono text-indigo-700 font-bold outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700">มอบหมายช่างผู้รับผิดชอบ <span class="text-rose-500">*</span></label>
+            <select name="technician_id" required class="w-full px-3 py-2 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+              <option value="">-- เลือกช่าง --</option>
+              {% for t in technicians %}
+                <option value="{{ t[0] }}">{{ t[1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700">รายละเอียดปัญหาที่แจ้ง / หน้างาน</label>
+          <textarea name="problem_detail" rows="2" placeholder="ระบุอาการเสียหรือบริการที่ลูกค้าต้องการ..." class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-2.5 rounded-xl shadow-sm text-xs transition">
+            บันทึกเปิดงานใหม่
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ประวัติใบงานทั้งหมดในระบบ -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-xs space-y-3">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-slate-800 text-sm">ประวัติใบงานทั้งหมดในระบบ (Job Orders)</h3>
+        <span class="text-xs text-slate-400">แสดงรายการและสถานะการสั่งการ</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-slate-100 text-slate-700 font-semibold border-y">
+            <tr>
+              <th class="p-3">เลขที่งาน</th>
+              <th class="p-3">ลูกค้า</th>
+              <th class="p-3">สินค้า / เครื่อง</th>
+              <th class="p-3">S/N</th>
+              <th class="p-3">ช่างรับผิดชอบ</th>
+              <th class="p-3">คำสั่งการ / Remark</th>
+              <th class="p-3">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for j in jobs %}
+            <tr class="hover:bg-slate-50 transition">
+              <td class="p-3 font-mono font-bold text-blue-600">{{ j[1] }}</td>
+              <td class="p-3 font-semibold text-slate-900">{{ j[2] or '-' }}</td>
+              <td class="p-3">{{ j[3] or '-' }}</td>
+              <td class="p-3 font-mono text-indigo-600 font-semibold">{{ j[7] or '-' }}</td>
+              <td class="p-3 font-medium text-slate-800">{{ j[4] or '-' }}</td>
+              <td class="p-3 text-[11px] text-slate-500 max-w-xs truncate">{{ j[8] or '-' }}</td>
+              <td class="p-3">
+                {% if j[5] == 'completed' %}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">เสร็จสมบูรณ์</span>
+                {% elif j[5] == 'awaiting_approval' %}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-200">รอหัวหน้าอนุมัติ</span>
+                {% else %}
+                  <span class="px-2.5 py-1 rounded-full text-[10px] bg-blue-100 text-blue-800 font-bold border border-blue-200">รอดำเนินการ</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="p-6 text-center text-slate-400">ยังไม่มีประวัติใบงานในระบบ</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar (มาตรฐานเดียวกับทุกหน้า) -->
+  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-around items-center z-40 shadow-lg">
+    <a href="/" class="flex flex-col items-center text-blue-600 font-bold"><span class="text-lg">📋</span><span class="text-[10px]">{{ t.menu_home }}</span></a>
+    <a href="/invoice" class="flex flex-col items-center text-slate-400"><span class="text-lg">📄</span><span class="text-[10px]">{{ t.menu_quotation }}</span></a>
+    <a href="/technician" class="flex flex-col items-center text-slate-400"><span class="text-lg">🛠️</span><span class="text-[10px]">{{ t.menu_tech }}</span></a>
+    <a href="/admin/users" class="flex flex-col items-center text-slate-400"><span class="text-lg">⚙️</span><span class="text-[10px]">{{ t.menu_admin }}</span></a>
+  </div>
+
+  <script>
+    document.getElementById('customerSelect').addEventListener('change', function() {
+      const custId = this.value;
+      const box = document.getElementById('customerMachinesBox');
+      const list = document.getElementById('machinesList');
+      list.innerHTML = '';
+      if (!custId) { box.classList.add('hidden'); return; }
+
+      fetch('/api/customer-machines/' + custId)
+        .then(res => res.json())
+        .then(data => {
+          if (data.length > 0) {
+            box.classList.remove('hidden');
+            data.forEach(m => {
+              const span = document.createElement('span');
+              span.className = 'bg-white border border-amber-300 px-2 py-0.5 rounded-lg shadow-sm text-amber-900 font-mono text-[11px]';
+              span.innerHTML = `⚙️ <strong>${m.name}</strong> (S/N: <span class="text-indigo-600">${m.serial}</span>)`;
+              list.appendChild(span);
+            });
+          } else {
+            box.classList.add('hidden');
+          }
+        });
+    });
+  </script>
+</body>
+</html>

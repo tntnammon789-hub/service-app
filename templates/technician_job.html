@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใบส่งมอบงานและรายงานบริการ - {{ job.job_no }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; padding-bottom: 80px; }
+    canvas { touch-action: none; }
+    @media print {
+      nav, .no-print, .mobile-nav { display: none !important; }
+      body { background: white; padding: 0; }
+      .print-border { border: 1px solid #cbd5e1 !important; box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 md:p-6 min-h-screen">
+  <div class="max-w-4xl mx-auto space-y-5">
+
+    <!-- แถบด้านบน -->
+    <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm no-print">
+      <div>
+        <span class="text-[11px] font-mono text-slate-400 block">เลขที่ใบงาน (Job Order)</span>
+        <h1 class="text-base font-bold text-blue-600">{{ job.job_no }}</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/technician" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl text-slate-600 font-semibold transition">
+          ⬅ กลับหน้ารายการ
+        </a>
+      </div>
+    </div>
+
+    <!-- ขั้นตอนที่ 1: ช่างกรอกผลงาน, แก้ไข S/N, กรอกค่าบริการ/อะไหล่ และถ่ายรูป 3 รูป -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 {% if request.args.get('step') == 'sign' or job.status == 'completed' %}hidden no-print{% endif %}">
+      <div class="border-b pb-3">
+        <h2 class="font-bold text-sm text-slate-900">ขั้นตอนที่ 1: บันทึกผลการซ่อม อะไหล่ ค่าบริการ และรูปถ่าย</h2>
+        <p class="text-xs text-slate-500">ข้อมูลทั้งหมดจะถูกนำไปจัดวางลงในแบบฟอร์มรายงานเพื่อเสนอให้ลูกค้าเซ็นตรวจรับและวางบิล</p>
+      </div>
+
+      <form action="/technician/job/{{ job.id }}/save-draft" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold mb-1">Serial Number บนตัวเครื่อง (แก้ไขให้ถูกต้องได้ที่นี่)</label>
+            <input type="text" name="serial_no" value="{{ job.serial_no or '' }}" required placeholder="ระบุ S/N หน้าเครื่องจริง" class="w-full px-3 py-2 border rounded-xl font-mono text-sm text-indigo-700 font-bold">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">ช่างผู้รับผิดชอบงาน</label>
+            <input type="text" readonly value="{{ job.technician_name or current_user }}" class="w-full px-3 py-2 bg-slate-100 border rounded-xl text-slate-600 cursor-not-allowed">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">รายละเอียดงานซ่อม / อะไหล่ที่เปลี่ยน / ผลการทดสอบเครื่อง <span class="text-rose-500">*</span></label>
+          <textarea name="work_result" required rows="3" placeholder="ระบุการทำงาน เช่น เปลี่ยนชุดหัวพิมพ์, ทำความสะอาด Roller, เซ็ตค่าความเข้ม และทดสอบพิมพ์ผ่าน 100 แผ่น..." class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">{{ job.work_result or '' }}</textarea>
+        </div>
+
+        <!-- ช่องกรอกตัวเลขค่าบริการและอะไหล่สำหรับเรียกเก็บเงิน -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <span class="font-bold text-slate-800 block mb-1">💰 สรุปค่าบริการและอะไหล่ (สำหรับออกใบเรียกเก็บเงิน/วางบิล):</span>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] text-slate-500 block mb-1">ค่าบริการซ่อม / ค่าแรง (บาท)</label>
+              <input type="number" step="0.01" name="labor_fee" value="{{ job.labor_fee }}" class="w-full px-3 py-2 border rounded-lg font-mono">
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500 block mb-1">ค่าอะไหล่ / ชิ้นส่วนที่เปลี่ยน (บาท)</label>
+              <input type="number" step="0.01" name="spare_parts_fee" value="{{ job.spare_parts_fee }}" class="w-full px-3 py-2 border rounded-lg font-mono">
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500 block mb-1">ค่าเดินทาง / นอกสถานที่ (บาท)</label>
+              <input type="number" step="0.01" name="travel_fee" value="{{ job.travel_fee }}" class="w-full px-3 py-2 border rounded-lg font-mono">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-2">ภาพถ่ายบันทึกการทำงานหน้างาน (สูงสุด 3 รูป)</label>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="border border-dashed p-3 rounded-xl text-center bg-slate-50">
+              <span class="block text-[11px] font-semibold text-slate-600 mb-1">1. ก่อนซ่อม / ชิ้นส่วนเสีย</span>
+              {% if job.photo_1 %}<img src="{{ job.photo_1 }}" class="h-24 mx-auto rounded object-cover mb-2">{% endif %}
+              <input type="file" name="photo_1" accept="image/*" capture="environment" class="text-[11px] w-full">
+            </div>
+            <div class="border border-dashed p-3 rounded-xl text-center bg-slate-50">
+              <span class="block text-[11px] font-semibold text-slate-600 mb-1">2. ระหว่างทำ / ซ่อมแซม</span>
+              {% if job.photo_2 %}<img src="{{ job.photo_2 }}" class="h-24 mx-auto rounded object-cover mb-2">{% endif %}
+              <input type="file" name="photo_2" accept="image/*" capture="environment" class="text-[11px] w-full">
+            </div>
+            <div class="border border-dashed p-3 rounded-xl text-center bg-slate-50">
+              <span class="block text-[11px] font-semibold text-slate-600 mb-1">3. หลังทำ / เครื่องพร้อมใช้</span>
+              {% if job.photo_3 %}<img src="{{ job.photo_3 }}" class="h-24 mx-auto rounded object-cover mb-2">{% endif %}
+              <input type="file" name="photo_3" accept="image/*" capture="environment" class="text-[11px] w-full">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow transition text-sm">
+          ➔ รวมเอกสารและไปยังหน้ารับรองส่งมอบงาน
+        </button>
+      </form>
+    </div>
+
+    <!-- ขั้นตอนที่ 2: ใบรายงานการปฏิบัติงานและส่งมอบเครื่อง (Service Report & Billing Form) ฉบับสมบูรณ์ -->
+    <div class="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm print-border space-y-6 {% if request.args.get('step') != 'sign' and job.status != 'completed' %}hidden{% endif %}">
+      
+      <!-- ส่วนหัวเอกสารมาตรฐานบริษัท -->
+      <div class="flex justify-between items-start border-b border-slate-200 pb-5">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">ใบรายงานบริการและส่งมอบเครื่อง</h2>
+          <p class="text-xs font-semibold text-slate-600">FIELD SERVICE REPORT & BILLING RECORD</p>
+          <div class="text-[11px] text-slate-500 mt-2 space-y-0.5">
+            <p class="font-bold text-slate-800">บริษัท สยาม เลเบล โซลูชั่นส์ จำกัด (สำนักงานใหญ่)</p>
+            <p>123/45 ถนนเพชรเกษม แขวงบางแค เขตบางแค กรุงเทพมหานคร 10160</p>
+            <p>เลขประจำตัวผู้เสียภาษี: 0105566012345 | โทรศัพท์: 02-123-4567</p>
+          </div>
+        </div>
+        <div class="text-right space-y-1">
+          <div class="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 inline-block text-left">
+            <span class="text-[10px] text-slate-400 block">เลขที่เอกสาร</span>
+            <span class="font-mono font-bold text-blue-600 text-sm">{{ job.job_no }}</span>
+          </div>
+          <p class="text-[11px] text-slate-400 pt-1">วันที่แจ้งงาน: {{ job.created_at[:10] if job.created_at else '-' }}</p>
+          {% if job.completed_at %}
+            <p class="text-[11px] text-emerald-600 font-semibold">ปิดงาน: {{ job.completed_at[:16] }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ข้อมูลลูกค้า & ข้อมูลอุปกรณ์ -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border text-xs">
+        <div class="space-y-1">
+          <p>🏢 <strong>ชื่อลูกค้า / บริษัท:</strong> <span class="font-bold text-slate-900">{{ job.customer_name }}</span></p>
+          <p>📄 <strong>เลขประจำตัวผู้เสียภาษี:</strong> {{ job.customer_tax_id or '-' }}</p>
+          <p>👤 <strong>ผู้ติดต่อหน้างาน:</strong> {{ job.contact_person or '-' }} (📞 {{ job.phone or '-' }})</p>
+          <p>📍 <strong>สถานที่หน้างาน:</strong> {{ job.shipping_address or '-' }}</p>
+        </div>
+        <div class="space-y-1 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-4">
+          <p>⚙️ <strong>เครื่องจักร / สินค้า:</strong> {{ job.product_name or '-' }} {% if job.model %}({{ job.model }}){% endif %}</p>
+          <p>🔢 <strong>Serial Number:</strong> <span class="font-mono font-bold text-indigo-700 text-sm bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">{{ job.serial_no or 'N/A' }}</span></p>
+          <p>🛠️ <strong>ช่างผู้ปฏิบัติงาน:</strong> {{ job.technician_name or '-' }}</p>
+        </div>
+      </div>
+
+      <!-- รายละเอียดปัญหาและการแก้ไข -->
+      <div class="space-y-2 text-xs">
+        <div class="bg-amber-50/70 border border-amber-200 p-3 rounded-xl text-amber-900">
+          <strong>อาการเสีย / ปัญหาที่ได้รับแจ้ง:</strong>
+          <p class="mt-0.5 text-slate-700">{{ job.problem_detail or '-' }}</p>
+        </div>
+        <div class="bg-emerald-50/70 border border-emerald-200 p-3 rounded-xl text-emerald-900">
+          <strong>ผลการปฏิบัติงาน / ชิ้นส่วนที่เปลี่ยน / การทดสอบ:</strong>
+          <p class="mt-0.5 text-slate-700 whitespace-pre-line">{{ job.work_result or '-' }}</p>
+        </div>
+      </div>
+
+      <!-- รูปถ่ายหน้างาน 3 รูป -->
+      <div>
+        <span class="text-xs font-bold text-slate-700 block mb-2">ภาพถ่ายบันทึกการทำงานภาคสนาม (Work Evidence):</span>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="border rounded-xl p-2 text-center bg-slate-50">
+            <span class="text-[10px] text-slate-500 font-semibold block mb-1">1. สภาพก่อนทำ</span>
+            {% if job.photo_1 %}<img src="{{ job.photo_1 }}" class="h-28 mx-auto rounded-lg object-cover">{% else %}<div class="h-28 flex items-center justify-center text-slate-300 text-xs">-</div>{% endif %}
+          </div>
+          <div class="border rounded-xl p-2 text-center bg-slate-50">
+            <span class="text-[10px] text-slate-500 font-semibold block mb-1">2. ระหว่างดำเนินการ</span>
+            {% if job.photo_2 %}<img src="{{ job.photo_2 }}" class="h-28 mx-auto rounded-lg object-cover">{% else %}<div class="h-28 flex items-center justify-center text-slate-300 text-xs">-</div>{% endif %}
+          </div>
+          <div class="border rounded-xl p-2 text-center bg-slate-50">
+            <span class="text-[10px] text-slate-500 font-semibold block mb-1">3. เครื่องพร้อมใช้งาน</span>
+            {% if job.photo_3 %}<img src="{{ job.photo_3 }}" class="h-28 mx-auto rounded-lg object-cover">{% else %}<div class="h-28 flex items-center justify-center text-slate-300 text-xs">-</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- สรุปยอดเงินค่าบริการ / ค่าอะไหล่ สำหรับเรียกเก็บเงิน -->
+      <div class="border-t pt-4">
+        <span class="text-xs font-bold text-slate-800 block mb-2">สรุปค่าใช้จ่ายการให้บริการ (Billing Breakdown):</span>
+        <table class="w-full text-xs text-left border border-slate-200 rounded-lg overflow-hidden">
+          <thead class="bg-slate-100 text-slate-700 font-semibold">
+            <tr>
+              <th class="p-2.5">รายการบริการ</th>
+              <th class="p-2.5 text-right w-36">จำนวนเงิน (บาท)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr>
+              <td class="p-2.5">ค่าบริการตรวจเช็กและซ่อมบำรุง (Labor / Service Fee)</td>
+              <td class="p-2.5 text-right font-mono">฿{{ "%.2f"|format(job.labor_fee) }}</td>
+            </tr>
+            <tr>
+              <td class="p-2.5">ค่าอะไหล่และชิ้นส่วนทดแทน (Spare Parts Fee)</td>
+              <td class="p-2.5 text-right font-mono">฿{{ "%.2f"|format(job.spare_parts_fee) }}</td>
+            </tr>
+            <tr>
+              <td class="p-2.5">ค่าเดินทางและบริการนอกสถานที่ (Travel / Transportation Fee)</td>
+              <td class="p-2.5 text-right font-mono">฿{{ "%.2f"|format(job.travel_fee) }}</td>
+            </tr>
+            <tr class="bg-slate-50 font-bold text-slate-900 border-t border-slate-300">
+              <td class="p-2.5">ยอดรวมสุทธิทั้งสิ้น (Grand Total)</td>
+              <td class="p-2.5 text-right font-mono text-emerald-700 text-sm">฿{{ "%.2f"|format(job.total_amount) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ช่องลงนาม 2 ฝ่าย สำหรับพิมพ์/ตรวจรับงานจริง -->
+      {% if job.status == 'completed' %}
+        <div class="border-t pt-6 grid grid-cols-2 gap-8 text-center text-xs">
+          <div>
+            <div class="h-16 flex items-center justify-center">
+              <span class="font-bold text-slate-700">{{ job.technician_name }}</span>
+            </div>
+            <div class="border-t border-slate-300 pt-1">
+              <p class="font-semibold text-slate-700">ช่างผู้ส่งมอบงาน</p>
+              <p class="text-slate-400 text-[10px]">บริษัท สยาม เลเบล โซลูชั่นส์ จำกัด</p>
+            </div>
+          </div>
+          <div>
+            <div class="h-16 flex items-center justify-center">
+              {% if job.signature_data %}
+                <img src="{{ job.signature_data }}" class="max-h-14">
+              {% endif %}
+            </div>
+            <div class="border-t border-slate-300 pt-1">
+              <p class="font-semibold text-slate-800">ลูกค้าผู้ตรวจรับมอบงาน: {{ job.signed_by }}</p>
+              <p class="text-slate-400 text-[10px]">วันที่ลงนาม: {{ job.completed_at[:10] if job.completed_at else '-' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="no-print pt-4 flex justify-between items-center border-t">
+          <a href="/technician/job/{{ job.id }}" class="text-xs text-indigo-600 font-bold hover:underline">✏️ กลับไปแก้ไขผลงาน/ค่าบริการ</a>
+          <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl shadow text-xs">
+            🖨️ สั่งพิมพ์ใบส่งมอบงาน / บันทึกเป็น PDF
+          </button>
+        </div>
+      {% else %}
+        <!-- จุดให้ลูกค้าลงนามยืนยันหน้างาน -->
+        <form action="/technician/job/{{ job.id }}/close" method="POST" id="sigForm" class="border-t pt-4 space-y-4 no-print">
+          <input type="hidden" name="technician_id" value="{{ job.technician_id }}">
+          <input type="hidden" name="signature_data" id="signature_data">
+
+          <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-3">
+            <span class="font-bold text-xs text-indigo-900 block">✍️ การตรวจรับงานและลงลายมือชื่อดิจิทัล (Customer Sign-off):</span>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล ลูกค้าผู้มีอำนาจตรวจรับงาน <span class="text-rose-500">*</span></label>
+              <input type="text" name="signed_by" required placeholder="เช่น คุณสมชาย ผู้จัดการโรงงาน" class="w-full px-3 py-2 border rounded-xl text-xs outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-700 mb-1">ลงลายมือชื่อผ่านหน้าจอ <span class="text-rose-500">*</span></label>
+              <div class="border-2 border-dashed border-indigo-200 bg-white rounded-xl p-2 text-center">
+                <canvas id="sigCanvas" width="450" height="140" class="bg-white rounded-lg border border-slate-200 mx-auto w-full max-w-md cursor-crosshair"></canvas>
+                <div class="mt-2">
+                  <button type="button" id="clearBtn" class="text-[10px] bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-md text-slate-600 font-semibold">ล้างลายเซ็น</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <a href="/technician/job/{{ job.id }}" class="w-1/3 text-center bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition">
+              ✏️ แก้ไขผลงาน/ค่าบริการ
+            </a>
+            <button type="submit" class="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow transition text-xs">
+              ✅ บันทึกปิดงานและออกเอกสารส่งมอบ
+            </button>
+          </div>
+        </form>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+  <script>
+    const canvas = document.getElementById('sigCanvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      let isDrawing = false, hasDrawn = false;
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: (clientX - rect.left) * (canvas.width / rect.width),
+          y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+      }
+
+      function startDraw(e) { isDrawing = true; hasDrawn = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); if(e.cancelable) e.preventDefault(); }
+      function draw(e) { if(!isDrawing) return; const p = getPos(e); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#0f172a'; ctx.lineTo(p.x, p.y); ctx.stroke(); if(e.cancelable) e.preventDefault(); }
+      function stopDraw() { isDrawing = false; }
+
+      canvas.addEventListener('mousedown', startDraw);
+      canvas.addEventListener('mousemove', draw);
+      window.addEventListener('mouseup', stopDraw);
+      canvas.addEventListener('touchstart', startDraw, {passive: false});
+      canvas.addEventListener('touchmove', draw, {passive: false});
+      window.addEventListener('touchend', stopDraw);
+
+      document.getElementById('clearBtn').addEventListener('click', () => { ctx.clearRect(0, 0, canvas.width, canvas.height); hasDrawn = false; });
+      document.getElementById('sigForm').addEventListener('submit', function(e) {
+        if (!hasDrawn) { alert('กรุณาให้ลูกค้าลงลายมือชื่อก่อนบันทึกปิดงาน'); e.preventDefault(); return; }
+        document.getElementById('signature_data').value = canvas.toDataURL('image/png');
+      });
+    }
+  </script>
+</body>
+</html>

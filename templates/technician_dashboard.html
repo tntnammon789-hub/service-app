@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ t.menu_tech }} - Service Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Sarabun', sans-serif !important; }
+    body { padding-bottom: 85px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 md:p-6 min-h-screen">
+  <div class="max-w-4xl mx-auto space-y-5">
+
+    <!-- Top Navbar ครบทุกเมนู (สำหรับ Admin & Supervisor เมนูจะไม่หาย) -->
+    <nav class="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-sm">🛠️</div>
+        <div>
+          <h1 class="font-bold text-slate-900 text-base leading-tight">{{ t.menu_tech }}</h1>
+          <span class="text-xs text-slate-500">ผู้ใช้งาน: <strong class="text-indigo-600">{{ current_user }}</strong> ({{ current_role }})</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+          <a href="/set-lang/th" class="px-2 py-0.5 rounded {% if lang == 'th' %}bg-white text-indigo-600 shadow-sm{% else %}text-slate-500{% endif %}">TH</a>
+          <a href="/set-lang/en" class="px-2 py-0.5 rounded {% if lang == 'en' %}bg-white text-indigo-600 shadow-sm{% else %}text-slate-500{% endif %}">EN</a>
+        </div>
+
+        {% if current_role in ['admin', 'supervisor'] %}
+          <a href="/" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">📋 {{ t.menu_home }}</a>
+          <a href="/invoice" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">📄 {{ t.menu_quotation }}</a>
+          <a href="/technician" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">🛠️ {{ t.menu_tech }}</a>
+          <a href="/admin/users" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">⚙️ {{ t.menu_admin }}</a>
+        {% endif %}
+
+        <a href="/logout" class="text-xs bg-rose-50 text-rose-600 font-semibold px-2.5 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-100 ml-1">
+          {{ t.logout }}
+        </a>
+      </div>
+    </nav>
+
+    <!-- ปุ่มเปิดโมดอล: ขอเปิดเคสงานหน้างาน -->
+    <div class="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-4 text-white shadow-sm flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-bold">ลูกค้าแจ้งงานด่วนหน้างาน?</h3>
+        <p class="text-xs text-indigo-100">ส่งเรื่องขอเปิดเคสงานใหม่ เพื่อให้หัวหน้าอนุมัติและมอบหมายงาน</p>
+      </div>
+      <button onclick="document.getElementById('requestModal').classList.remove('hidden')" class="bg-white text-indigo-700 font-bold px-4 py-2 rounded-xl text-xs shadow hover:bg-indigo-50 transition">
+        + ขอเปิดเคสงานหน้างาน
+      </button>
+    </div>
+
+    <!-- [เฉพาะหัวหน้า/แอดมิน] กล่องงานด่วนหน้างานที่รออนุมัติ & มอบหมาย (Default เลือกช่างคนรีเควสต์ให้อัตโนมัติ) -->
+    {% if current_role in ['admin', 'supervisor'] and pending_approval_jobs %}
+    <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm space-y-3">
+      <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+        <h3 class="font-bold text-amber-900 text-sm flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-600 animate-pulse"></span>
+          🚨 งานด่วนหน้างานรอการตรวจสอบ & มอบหมายช่าง ({{ pending_approval_jobs|length }} รายการ)
+        </h3>
+        <span class="text-[11px] text-amber-700 font-semibold">เฉพาะหัวหน้างาน</span>
+      </div>
+
+      <div class="space-y-3">
+        {% for pj in pending_approval_jobs %}
+        <div class="bg-white p-4 rounded-xl border border-amber-200 space-y-3 text-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="font-mono font-bold text-blue-600">{{ pj[1] }}</span>
+              <h4 class="font-bold text-slate-900 text-sm">{{ pj[2] or 'ลูกค้าใหม่/หน้างาน' }}</h4>
+            </div>
+            <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-[10px]">รอหัวหน้าอนุมัติ</span>
+          </div>
+
+          <div class="bg-slate-50 p-2.5 rounded-lg border text-slate-600 space-y-1">
+            <p>🔢 <strong>Serial No:</strong> <span class="font-mono text-indigo-600 font-bold">{{ pj[3] or '-' }}</span></p>
+            <p>🛠️ <strong>ช่างผู้แจ้งงาน:</strong> <strong class="text-indigo-700">{{ pj[5] or '-' }}</strong> (เวลา: {{ pj[6] or '-' }})</p>
+            <p class="text-slate-800"><strong>อาการที่แจ้ง:</strong> {{ pj[4] or '-' }}</p>
+          </div>
+
+          <!-- ฟอร์มมอบหมายงาน: ตั้งชื่อช่างที่เป็นคนแจ้งงาน (pj[8]) เป็นค่าเริ่มต้น (Selected) ทันที -->
+          <form action="/job/{{ pj[0] }}/approve-assign" method="POST" class="flex flex-wrap items-center gap-2 pt-1">
+            <span class="font-semibold text-slate-700">มอบหมายให้ช่าง:</span>
+            <select name="technician_id" required class="px-3 py-1.5 border rounded-lg bg-white font-semibold flex-1">
+              <option value="">-- เลือกช่างผู้รับผิดชอบ --</option>
+              {% for t in technicians %}
+                <option value="{{ t[0] }}" {% if pj[8]|string == t[0]|string %}selected{% endif %}>
+                  {{ t[1] }} {% if pj[8]|string == t[0]|string %}(ผู้แจ้งงานนี้){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg shadow-sm">
+              ✓ อนุมัติ & ส่งงาน
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- รายการใบงานที่ได้รับมอบหมาย -->
+    <div class="space-y-3">
+      <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">รายการใบงานที่ต้องปฏิบัติการ ({{ jobs|length }} งาน)</h2>
+
+      {% for j in jobs %}
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 hover:border-indigo-300 transition">
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="font-mono font-bold text-sm text-blue-600 block">{{ j[1] }}</span>
+            <h3 class="font-bold text-slate-900 text-base mt-0.5">{{ j[2] or 'ลูกค้าทั่วไป' }}</h3>
+          </div>
+          {% if j[9] == 'completed' %}
+            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">✅ ปิดงานแล้ว</span>
+          {% else %}
+            <span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full">⏳ รอดำเนินการ</span>
+          {% endif %}
+        </div>
+
+        <div class="text-xs text-slate-600 space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+          <p>⚙️ <strong>อุปกรณ์:</strong> {{ j[6] or '-' }} | S/N: <span class="font-mono font-bold text-indigo-600">{{ j[7] or '-' }}</span></p>
+          <p>📍 <strong>สถานที่:</strong> {{ j[5] or '-' }}</p>
+          <p class="pt-1 text-slate-800"><strong>อาการ/งานที่แจ้ง:</strong> {{ j[8] or '-' }}</p>
+          {% if j[12] %}
+            <div class="bg-indigo-50 border border-indigo-200 p-2 rounded text-indigo-900 text-[11px] mt-1">
+              <strong>คำสั่งการ:</strong> {{ j[12] }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="pt-2">
+          <a href="/technician/job/{{ j[0] }}" class="w-full block text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+            {% if j[9] == 'completed' %}📄 ดูใบส่งมอบงาน/พิมพ์เอกสาร (Print / PDF){% else %}🛠️ บันทึกผลงาน / ตรวจสอบปิดงาน ➔{% endif %}
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="bg-white p-8 text-center text-slate-400 rounded-2xl border">
+        ไม่มีรายการงานที่ได้รับมอบหมายในขณะนี้
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  <!-- Modal ขอเปิดเคสงานหน้างาน -->
+  <div id="requestModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-sm">ขอเปิดเคสงานบริการหน้างาน</h3>
+        <button onclick="document.getElementById('requestModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <form action="/job/field-request" method="POST" class="space-y-3 text-xs">
+        <input type="hidden" name="customer_mode" id="modalCustomerMode" value="master">
+
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="font-semibold text-slate-700">ข้อมูลลูกค้าหน้างาน:</label>
+            <div class="flex gap-1">
+              <button type="button" id="btnModalMaster" onclick="switchModalMode('master')" class="px-2.5 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold">เลือกลูกค้าเดิม</button>
+              <button type="button" id="btnModalCustom" onclick="switchModalMode('custom')" class="px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold">✏️ ลูกค้าใหม่</button>
+            </div>
+          </div>
+
+          <div id="modalMasterDiv">
+            <select name="customer_id" id="modalCustomerSelect" class="w-full px-3 py-2 border rounded-xl bg-white text-xs">
+              <option value="">-- เลือกลูกค้าในระบบ --</option>
+              {% for c in customers %}
+                <option value="{{ c[0] }}">{{ c[1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="modalCustomDiv" class="hidden space-y-2">
+            <input type="text" name="custom_customer_name" id="modalCustName" placeholder="พิมพ์ชื่อบริษัท / ลูกค้าใหม่ *" class="w-full px-3 py-2 border rounded-xl font-semibold">
+            <input type="text" name="custom_customer_phone" id="modalCustPhone" placeholder="เบอร์ติดต่อลูกค้าหน้างาน" class="w-full px-3 py-2 border rounded-xl">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Serial Number ที่พบบนเครื่อง</label>
+          <input type="text" name="serial_no" placeholder="เช่น SN-2026-999" class="w-full px-3 py-2 border rounded-xl font-mono text-indigo-700 font-bold">
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">อาการเสีย / รายละเอียดงานที่ลูกค้าแจ้ง <span class="text-rose-500">*</span></label>
+          <textarea name="problem_detail" required rows="3" placeholder="ระบุอาการเสียหน้างาน เพื่อส่งเรื่องให้หัวหน้าอนุมัติและจ่ายงาน..." class="w-full px-3 py-2 border rounded-xl"></textarea>
+        </div>
+
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="document.getElementById('requestModal').classList.add('hidden')" class="w-1/2 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold">ยกเลิก</button>
+          <button type="submit" class="w-1/2 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow">ส่งเรื่องเปิดงาน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar (แสดงครบ 4 เมนูสำหรับ Supervisor และ Admin) -->
+  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex justify-around items-center z-40 shadow-lg">
+    {% if current_role in ['admin', 'supervisor'] %}
+      <a href="/" class="flex flex-col items-center text-slate-400"><span class="text-lg">📋</span><span class="text-[10px]">{{ t.menu_home }}</span></a>
+      <a href="/invoice" class="flex flex-col items-center text-slate-400"><span class="text-lg">📄</span><span class="text-[10px]">{{ t.menu_quotation }}</span></a>
+      <a href="/technician" class="flex flex-col items-center text-indigo-600 font-bold"><span class="text-lg">🛠️</span><span class="text-[10px]">{{ t.menu_tech }}</span></a>
+      <a href="/admin/users" class="flex flex-col items-center text-slate-400"><span class="text-lg">⚙️</span><span class="text-[10px]">{{ t.menu_admin }}</span></a>
+    {% else %}
+      <a href="/technician" class="flex flex-col items-center text-indigo-600 font-bold"><span class="text-xl">🛠️</span><span class="text-[11px]">งานช่างของฉัน</span></a>
+    {% endif %}
+  </div>
+
+  <script>
+    function switchModalMode(mode) {
+      document.getElementById('modalCustomerMode').value = mode;
+      const btnM = document.getElementById('btnModalMaster');
+      const btnC = document.getElementById('btnModalCustom');
+      const divM = document.getElementById('modalMasterDiv');
+      const divC = document.getElementById('modalCustomDiv');
+      const sel = document.getElementById('modalCustomerSelect');
+      const custName = document.getElementById('modalCustName');
+
+      if (mode === 'master') {
+        btnM.className = "px-2.5 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold";
+        btnC.className = "px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold";
+        divM.classList.remove('hidden');
+        divC.classList.add('hidden');
+        sel.required = true;
+        custName.required = false;
+      } else {
+        btnC.className = "px-2.5 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold";
+        btnM.className = "px-2.5 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-bold";
+        divC.classList.remove('hidden');
+        divM.classList.add('hidden');
+        sel.required = false;
+        custName.required = true;
+      }
+    }
+  </script>
+</body>
+</html>
